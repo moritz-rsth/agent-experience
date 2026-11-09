@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Experience</title>
+<!-- Geist (SIL OFL), inlined at build time: the deck makes no network requests. -->
+<style>
+@font-face { font-family: "Geist"; src: url({{Geist-Variable.woff2}}) format("woff2"); font-weight: 100 900; font-style: normal; font-display: block; }
+@font-face { font-family: "Geist Mono"; src: url({{GeistMono-Variable.woff2}}) format("woff2"); font-weight: 100 900; font-style: normal; font-display: block; }
+</style>
+<style>
+/* ===========================================
+   VIEWPORT FITTING: MANDATORY. Do not remove.
+   One slide = one viewport. Too much content = split the slide.
+   =========================================== */
+html, body { height: 100%; overflow-x: hidden; }
+/* overflow-x on both html and body makes body the scroller, so snap on both */
+html, body { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+.slide {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.slide-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-height: 100%;
+  overflow: hidden;
+  padding: var(--slide-padding);
+  padding-bottom: calc(var(--bar-h) + var(--slide-padding) * 0.6); /* keep clear of the bottom bar */
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* ===========================================
+   THEME: edit these to restyle the whole deck
+   Four text sizes, no more. --small-size is only for figure captions, source
+   lines and the bottom bar; everything the room should read is body or larger.
+   =========================================== */
+:root {
+  --bg: #fbfbf9;
+  --ink: #0d0d0d;
+  --ink-2: #3a3a3a;
+  --muted: #7a7873;
+  --line: #e4e2dc;
+  --card: #ffffff;
+  --accent: #e0218a;               /* one accent colour, used sparingly */
+  --accent-soft: rgba(224, 33, 138, 0.12);
+  --ok: #1f9d55;
+  /* The three AX layers: one colour each, on every slide that names them */
+  --find: #2563eb;
+  --read: #b45309;
+  --act: #e0218a;
+  --find-soft: rgba(37, 99, 235, 0.08);
+  --read-soft: rgba(180, 83, 9, 0.08);
+  --act-soft: rgba(224, 33, 138, 0.08);
+  --bad: #d64545;
+
+  --font: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --title-size: clamp(1.8rem, 5.8vw, 5.2rem);
+  --h2-size: clamp(1.4rem, 3.4vw, 3rem);
+  --h3-size: clamp(1.05rem, 2.1vw, 1.75rem);
+  --body-size: clamp(0.95rem, 1.6vw, 1.45rem);
+  --small-size: clamp(0.8rem, 1.1vw, 1.05rem);
+
+  --slide-padding: clamp(1rem, 4vw, 4rem);
+  --content-gap: clamp(0.6rem, 2.4vh, 2.2rem);
+  --element-gap: clamp(0.4rem, 1.2vw, 1.2rem);
+  --radius: clamp(8px, 1vw, 14px);
+  --bar-h: clamp(44px, 6vh, 60px);
+}
+
+/* Short viewports: shrink type and spacing, then hide optional elements.
+   Mark optional elements with .hide-mid (<=820px tall) or .hide-short (<=500px tall). */
+@media (max-height: 820px) { .hide-mid { display: none !important; } }
+@media (max-height: 700px) {
+  :root {
+    --slide-padding: clamp(0.75rem, 3vw, 2rem);
+    --content-gap: clamp(0.4rem, 1.5vh, 1rem);
+    --title-size: clamp(1.4rem, 4.5vw, 3rem);
+    --h2-size: clamp(1.15rem, 2.8vw, 2rem);
+    --body-size: clamp(0.85rem, 1.4vw, 1.15rem);
+  }
+}
+@media (max-height: 600px) {
+  :root {
+    --slide-padding: clamp(0.5rem, 2.5vw, 1.5rem);
+    --content-gap: clamp(0.3rem, 1vh, 0.75rem);
+    --title-size: clamp(1.2rem, 4vw, 2.2rem);
+    --body-size: clamp(0.8rem, 1.3vw, 1rem);
+  }
+  .decorative { display: none; }
+}
+@media (max-height: 500px) {
+  :root {
+    --slide-padding: clamp(0.4rem, 2vw, 1rem);
+    --title-size: clamp(1rem, 3.5vw, 1.6rem);
+    --h2-size: clamp(0.95rem, 2.5vw, 1.35rem);
+    --h3-size: clamp(0.85rem, 1.8vw, 1.05rem);
+    --body-size: clamp(0.72rem, 1.1vw, 0.9rem);
+    --small-size: clamp(0.65rem, 0.95vw, 0.78rem);
+  }
+  .hide-short { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+  html, body { scroll-behavior: auto; }
+}
+
+/* ===========================================
+   BASE TYPOGRAPHY
+   =========================================== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: var(--body-size);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+h1 { font-size: var(--title-size); font-weight: 600; letter-spacing: -0.035em; line-height: 1.02; }
+h2 { font-size: var(--h2-size); font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; }
+h3 { font-size: var(--h3-size); font-weight: 600; letter-spacing: -0.01em; line-height: 1.25; }
+p  { color: var(--ink-2); }
+strong { color: var(--ink); font-weight: 600; }
+.mono { font-family: var(--mono); }
+.muted { color: var(--muted); }
+.small { font-size: var(--small-size); }
+.accent { color: var(--accent); }
+
+/* Eyebrow: mono label with a short rule. Title slide only; content slides have no eyebrow
+   (the pill already says which section, the page number says where). */
+.eyebrow {
+  font-family: var(--mono);
+  font-size: var(--small-size);
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  display: flex; align-items: center; gap: 0.6em;
+}
+.eyebrow.no-rule::before { display: none; }
+.eyebrow::before { content: ""; width: 1.6em; height: 1px; background: currentColor; }
+
+/* Head: one h2, pinned to the slide's top-left corner (PowerPoint style); the visual stays
+   centred below it. No subheading, no eyebrow, no step number. */
+.head { margin-bottom: var(--content-gap); }
+.slide .head { position: absolute; top: var(--slide-padding); left: var(--slide-padding); right: var(--slide-padding); margin: 0; z-index: 1; }
+.slide:has(.head) .slide-content { padding-top: calc(var(--slide-padding) + var(--h2-size) * 1.3 + var(--content-gap)); }
+
+/* Layout helpers */
+.stack { display: flex; flex-direction: column; gap: var(--content-gap); min-height: 0; }
+.row { display: flex; gap: var(--content-gap); min-height: 0; }
+.row > * { min-width: 0; }
+.grow { flex: 1; }
+.center { align-items: center; }
+.text-center { text-align: center; }
+.show-xs { display: none; }   /* phone-only variant, e.g. a vertical copy of a diagram */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: clamp(0.8rem, 1.8vw, 1.6rem);
+}
+.card.hi { border-color: var(--accent); }
+.card.hi h3 { color: var(--accent); }
+.tag {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: var(--small-size);
+  padding: 0.15em 0.6em;
+  border-radius: 99px;
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  background: var(--card);
+  white-space: nowrap;
+}
+.tag.dark { background: var(--ink); color: #fff; border-color: var(--ink); }
+.tag.hi { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.tag.ok { color: var(--ok); border-color: rgba(31,157,85,.35); background: rgba(31,157,85,.07); }
+.tag.bad { color: var(--bad); border-color: rgba(214,69,69,.35); background: rgba(214,69,69,.07); }
+
+/* Bullet list with a short dash instead of a disc. ≤ 4 bullets of ≤ 5 words. */
+ul.clean { list-style: none; display: flex; flex-direction: column; gap: clamp(0.5rem, 1.6vh, 1.1rem); font-size: var(--h3-size); }
+ul.clean li { padding-left: 1.2em; position: relative; color: var(--ink); }
+ul.clean li::before { content: ""; position: absolute; left: 0; top: 0.62em; width: 0.5em; height: 2px; background: var(--ink); }
+
+/* Media: images, videos and diagrams, inside a <figure>. The caption is optional and
+   exists for the source [n], not to explain the picture: the speaker does that. */
+figure { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; min-height: 0; align-items: center; }
+figcaption { font-size: var(--small-size); color: var(--muted); text-align: center; }
+.media {
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+  width: auto;
+  height: auto;
+  border-radius: calc(var(--radius) * 0.7);
+  object-fit: contain;
+}
+.media.frame { background: var(--card); border: 1px solid var(--line); }
+img, video { max-width: 100%; }
+.two-up { display: grid; grid-template-columns: 1fr 1fr; gap: var(--content-gap); align-items: center; }
+.two-up .media { max-height: 50vh; }
+
+/* Before → after comparison */
+.compare { display: grid; grid-template-columns: 1fr auto 1fr; gap: var(--element-gap); align-items: center; }
+.compare .arrow { font-size: var(--h2-size); color: var(--muted); }
+.compare .media { max-height: 44vh; }
+
+
+/* ===========================================
+   BOTTOM BAR: section pills + page number + progress line
+   Pills are generated from each slide's data-section attribute.
+   =========================================== */
+.bar {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  height: var(--bar-h);
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0 var(--slide-padding);
+  background: rgba(251, 251, 249, 0.86);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--line);
+  z-index: 50;
+}
+.bar-progress {
+  position: absolute; left: 0; top: -1px; height: 2px;
+  background: var(--ink);
+  width: 0;
+  transition: width 0.5s cubic-bezier(.2,.7,.2,1);
+}
+.sections { display: flex; align-items: center; gap: clamp(0.1rem, 0.5vw, 0.4rem); list-style: none; min-width: 0; overflow: hidden; }
+.sections button {
+  font: inherit;
+  font-size: var(--small-size);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  padding: 0.35em 0.9em;
+  border-radius: 99px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .35s ease, color .35s ease, border-color .35s ease;
+  display: flex; gap: 0.5em; align-items: baseline;
+}
+.sections button .n { font-family: var(--mono); font-size: 0.9em; }
+.sections button:hover { color: var(--ink); }
+.sections button.done { color: var(--ink-2); }
+.sections button.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+.sections button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pageno { font-family: var(--mono); font-size: var(--small-size); color: var(--muted); white-space: nowrap; }
+.pageno b { color: var(--ink); font-weight: 500; }
+@media (max-width: 900px) { .sections button:not(.active) .label { display: none; } }
+
+/* ===========================================
+   REVEAL ANIMATION: add .reveal to direct children of the slide
+   =========================================== */
+.reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s cubic-bezier(.2,.7,.2,1); }
+.slide.visible .reveal { opacity: 1; transform: none; }
+.slide.visible .reveal:nth-child(2) { transition-delay: .08s; }
+.slide.visible .reveal:nth-child(3) { transition-delay: .16s; }
+.slide.visible .reveal:nth-child(4) { transition-delay: .24s; }
+.slide.visible .reveal:nth-child(5) { transition-delay: .32s; }
+.slide.visible .reveal:nth-child(6) { transition-delay: .40s; }
+
+
+/* ===========================================
+   COMPONENTS used by this deck
+   =========================================== */
+
+/* Title slide: label + byline on top, title + hook in the middle */
+.title-slide .slide-content { justify-content: space-between; }
+.title-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.byline { display: flex; flex-direction: column; align-items: flex-end; gap: 0.15em; font-size: var(--small-size); font-family: var(--mono); color: var(--muted); text-align: right; }
+.byline b { color: var(--ink); font-weight: 500; }
+.title-main { display: grid; grid-template-columns: 1fr 1.15fr; gap: clamp(1.2rem, 4vw, 4rem); align-items: center; }
+.title-main h1 { font-size: var(--title-size); }
+.title-main .ask { font-size: var(--h3-size); color: var(--ink-2); margin-top: clamp(0.8rem, 2.5vh, 1.8rem); max-width: 22ch; }
+.title-main .ask .q-mark { display: inline-grid; width: 1.6em; height: 1.6em; font-size: 0.8em; vertical-align: 0.1em; margin-right: 0.5em; }
+
+/* Chat transcript (hook) */
+.chat { display: flex; flex-direction: column; gap: var(--element-gap); font-size: var(--body-size); }
+.chat .user { align-self: flex-end; background: var(--ink); color: #fff; padding: 0.7em 1em; border-radius: 1.1em 1.1em 0.3em 1.1em; max-width: 88%; }
+.chat .ai { background: var(--card); border: 1px solid var(--line); padding: 0.9em 1.1em; border-radius: 1.1em 1.1em 1.1em 0.3em; max-width: 96%; color: var(--ink); }
+.chat .ai .dim { color: var(--muted); }
+.chat .who { font-family: var(--mono); font-size: var(--small-size); color: var(--muted); display: block; margin-bottom: 0.3em; }
+.chat mark { background: var(--accent-soft); color: var(--accent); font-weight: 600; padding: 0 0.15em; border-radius: 3px; }
+
+/* Statement: one sentence, centred (appendix divider) */
+.statement { font-size: clamp(1.8rem, 5vw, 4.4rem); max-width: 20ch; margin: 0 auto; text-align: center; }
+
+/* Question box (closing question) */
+.question {
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--card);
+  padding: clamp(0.8rem, 1.8vw, 1.6rem) clamp(1rem, 2.4vw, 2.2rem);
+  box-shadow: 6px 6px 0 var(--ink);
+  max-width: 1100px; margin: 0 auto; width: 100%;
+}
+.q-head { display: flex; align-items: center; gap: 0.6em; }
+.q-mark { width: 1.5em; height: 1.5em; flex: none; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: var(--h2-size); }
+.question h2 { max-width: 30ch; }
+
+/* Two readers */
+.readers { display: grid; grid-template-columns: 1fr 1fr; gap: var(--content-gap); align-items: stretch; }
+.readers > div { display: flex; flex-direction: column; gap: var(--element-gap); min-width: 0; }
+.readers h3 { color: var(--ink-2); }
+.readers .media { max-height: 58vh; align-self: flex-start; }
+.agent-view { flex: 1; max-height: 58vh; background: #111214; color: #e9e9e4; border-radius: calc(var(--radius) * 0.7); padding: clamp(1rem, 2.4vw, 2.2rem); display: flex; flex-direction: column; gap: clamp(1rem, 3vh, 2rem); font-family: var(--mono); font-size: var(--body-size); }
+.agent-view .got { color: #fff; }
+.agent-view .root { color: #8b8a85; }
+.agent-view .says { margin-top: auto; font-family: var(--font); font-size: var(--h3-size); color: #fff; line-height: 1.3; border-left: 3px solid var(--accent); padding-left: 0.8em; }
+
+/* Big values: 2–4, label + value */
+.stats { display: grid; grid-template-columns: 1.15fr 1.5fr 0.85fr 1fr; gap: clamp(1rem, 3.2vw, 3.5rem); text-align: center; align-items: start; }
+.stat .v { font-size: clamp(1.8rem, 4.6vw, 5.2rem); font-weight: 600; letter-spacing: -0.03em; line-height: 1.05; white-space: nowrap; }
+.stat .v .vs { font-size: 0.42em; color: var(--muted); font-weight: 500; margin: 0 0.25em; letter-spacing: 0; }
+.stat .v.accent { color: var(--accent); }
+.stat .k { font-size: var(--body-size); color: var(--ink-2); margin-top: 0.4em; }
+
+/* Demo task prompt */
+.demo-wrap { display: flex; flex-direction: column; gap: var(--content-gap); max-width: 1150px; margin: 0 auto; width: 100%; }
+.prompt { font-size: clamp(1.15rem, 2.5vw, 2.25rem); line-height: 1.38; background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--ink); border-radius: var(--radius); padding: clamp(1rem, 2.6vw, 2.4rem); color: var(--ink); }
+.prompt .url { font-family: var(--mono); font-size: 0.82em; word-break: break-all; color: var(--ink-2); }
+
+/* Layer colours */
+.l-find { color: var(--find); } .l-read { color: var(--read); } .l-act { color: var(--act); }
+
+/* Title: the talk's name, large, and one question */
+.title-main.solo { display: flex; flex-direction: column; align-items: flex-start; }
+.title-main.solo h1 { font-size: clamp(2.6rem, 10vw, 9.5rem); letter-spacing: -0.045em; line-height: 0.95; }
+.title-main.solo .ask { font-size: var(--h2-size); max-width: 30ch; margin-top: clamp(1.2rem, 4vh, 3rem); color: var(--ink-2); }
+
+/* Everyone is betting: three real headline screenshots, each with its short link */
+.news { display: flex; flex-direction: column; gap: var(--content-gap); align-items: center; width: 100%; max-width: 1250px; margin: 0 auto; }
+.news-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--content-gap); align-items: end; width: 100%; }
+.news figure { width: 100%; }
+.news .media { width: 100%; max-height: none; }
+.news figure.wide .media { width: min(100%, 50vw, 64vh * 4.37); }
+.news figcaption { font-family: var(--mono); font-size: var(--small-size); }
+.news figcaption a:not(.ref) { color: var(--ink-2); text-decoration: none; }
+
+/* Your assistants: coding agents | plain rule | personal agents. Monochrome marks, same box and baseline.
+   Marks: glyphs extracted from images supplied by Moritz and inked black (Codex, Grok, Muse), Simple Icons (Claude), instinct.com (Instinct), chatgpt.com favicon blossom (Dots, placeholder). */
+.agents-note { text-align: center; font-size: var(--h3-size); color: var(--ink-2); margin-bottom: var(--content-gap); }
+.agents { display: grid; grid-template-columns: 2fr auto 4fr; gap: calc(var(--content-gap) * 1.3); align-items: stretch; max-width: 1500px; width: 100%; margin: 0 auto; }
+.agent-group { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--content-gap); align-items: start; }
+.agent-group.four { grid-template-columns: repeat(4, 1fr); }
+.agent-rule { width: 1px; background: var(--muted); opacity: 0.5; }
+.logo { gap: clamp(0.6rem, 2vh, 1.4rem); }
+.logo .mark { display: flex; align-items: center; justify-content: center; width: clamp(44px, 6.4vw, 120px); height: clamp(44px, 6.4vw, 120px); }
+.logo .mark svg { width: 100%; height: 100%; fill: var(--ink); }
+.logo .mark img { height: 100%; width: 100%; object-fit: contain; max-width: none; }
+.logo figcaption { font-size: var(--h3-size); font-weight: 600; color: var(--ink); white-space: nowrap; }
+.logo figcaption .ref { font-weight: 400; vertical-align: 0.35em; }
+
+/* Definition: one sentence, very large; heading larger than usual */
+.def-slide .head h2 { font-size: calc(var(--h2-size) * 1.3); }
+.def-slide .slide-content { padding-top: calc(var(--slide-padding) + var(--h2-size) * 1.7 + var(--content-gap)); }
+.definition { font-size: clamp(1.8rem, 4.6vw, 4.4rem); font-weight: 500; letter-spacing: -0.025em; line-height: 1.16; color: var(--ink); max-width: 24ch; margin: 0 auto; }
+.definition span { font-weight: 650; }
+
+/* Agents answer…: two blocks, the leading words large; arrow and the consequence under the right block */
+.answer { display: flex; flex-direction: column; gap: var(--content-gap); max-width: 1300px; width: 100%; margin: 0 auto; }
+.answer-row { display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--content-gap) * 1.5); align-items: start; }
+.ans { display: flex; flex-direction: column; gap: 0.35em; }
+.ans .big { font-size: clamp(2rem, 5vw, 4.8rem); font-weight: 600; letter-spacing: -0.03em; line-height: 1.02; color: var(--ink); }
+.ans .rest { font-size: var(--h3-size); color: var(--ink-2); }
+.ans.hi .big { color: var(--accent); }
+.answer-follow { display: grid; grid-template-columns: 1fr 1fr; column-gap: calc(var(--content-gap) * 1.5); row-gap: 0.3em; }
+.answer-follow .down { grid-column: 2; font-size: var(--h2-size); color: var(--muted); line-height: 1; }
+.answer-follow p { grid-column: 2; font-size: var(--h3-size); font-weight: 600; color: var(--ink); margin-bottom: var(--content-gap); }
+
+/* Question interstitials: one question, large and centred, nothing else */
+.q-slide .slide-content { align-items: center; justify-content: center; }
+.question-big { font-size: clamp(1.8rem, 4.6vw, 4.4rem); line-height: 1.12; letter-spacing: -0.03em; text-align: center; max-width: 20ch; border: 1.5px solid var(--ink); border-radius: calc(var(--radius) * 1.6); background: var(--card); padding: clamp(1.4rem, 4.5vh, 3.6rem) clamp(1.6rem, 4.5vw, 4.4rem); }
+
+/* Live iframes of the test shop, scaled from a 1200x800 page; the poster shows when offline */
+.frames { display: grid; gap: var(--content-gap); width: 100%; margin: 0 auto; }
+.frames.one { max-width: min(1150px, 66vh * 1.5); }
+.frames.two { grid-template-columns: 1fr 1fr; max-width: 1500px; }
+.live-frame { position: relative; aspect-ratio: 3 / 2; border: 1px solid var(--line); border-radius: calc(var(--radius) * 0.7); overflow: hidden; background: #f6f5f2; }
+.live-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.live-frame iframe { position: absolute; top: 0; left: 0; width: 1200px; height: 800px; border: 0; transform-origin: 0 0; transform: scale(var(--s, 0.5)); opacity: 0; transition: opacity .4s ease; background: #f6f5f2; }
+.live-frame.on iframe { opacity: 1; }
+.frame-label { position: absolute; z-index: 2; top: 0.6em; left: 0.6em; background: var(--ink); color: #fff; font-size: var(--body-size); padding: 0.1em 0.6em; border-radius: 99px; }
+
+/* Find, read, act: the template's .cards, layer colour only on the number, label and a thin rule */
+.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--element-gap); }
+.cards .card { display: flex; flex-direction: column; gap: 0.4em; }
+.cards .card p { font-size: var(--body-size); }
+.layer-cards { max-width: 1250px; width: 100%; margin: 0 auto; gap: var(--content-gap); }
+.layer-cards .card { padding: clamp(1.2rem, 2.6vw, 2.6rem); gap: 0.7em; }
+.layer-cards h3 { font-size: var(--h2-size); display: flex; align-items: baseline; justify-content: center; gap: 0.35em; }
+.layer-cards h3 .num { font-family: var(--mono); font-weight: 500; font-size: 0.62em; }
+.layer-cards p { font-size: var(--h3-size); color: var(--ink); }
+.lc-find h3 { color: var(--find); } .lc-read h3 { color: var(--read); } .lc-act h3 { color: var(--act); }
+
+/* Layer tag on the diagram slides: drawn by CSS from data-layer, next to the heading */
+h2[data-layer]::after { content: attr(data-layer); display: inline-block; vertical-align: 0.45em; margin-left: 0.7em; font-family: var(--mono); font-size: var(--small-size); font-weight: 500; letter-spacing: 0; padding: 0.2em 0.75em; border-radius: 99px; border: 1.5px solid currentColor; }
+
+/* Diagram slides */
+.diagram-wrap { width: 100%; max-width: 1400px; margin: 0 auto; }
+.diagram-wrap svg { width: 100%; height: auto; max-height: 64vh; display: block; }
+
+/* Your own tools */
+.own { display: flex; flex-direction: column; align-items: center; gap: calc(var(--content-gap) * 1.2); }
+.own .apple svg { width: clamp(36px, 3.6vw, 64px); height: auto; fill: var(--ink); display: block; }
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--content-gap); width: 100%; max-width: 1000px; }
+.tile { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: clamp(1rem, 2.6vw, 2.4rem); display: flex; flex-direction: column; align-items: center; gap: 0.8em; font-size: var(--h3-size); font-weight: 600; }
+.tile svg { width: clamp(44px, 5.4vw, 100px); height: auto; fill: none; stroke: var(--ink); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.own-line { font-size: var(--h3-size); color: var(--ink-2); }
+
+/* ChatGPT backup slide */
+.chat.solo { max-width: 1000px; margin: 0 auto; width: 100%; font-size: var(--h3-size); }
+
+/* Demo task: the two states under the prompt; a button reveals the two recorded answers */
+.sites { display: flex; align-items: center; gap: 0.8em; flex-wrap: wrap; font-size: var(--body-size); }
+.sites .tag { font-size: var(--body-size); }
+.sites .vs { color: var(--muted); font-family: var(--mono); }
+.btn-show { align-self: center; font: inherit; font-size: var(--body-size); font-weight: 600; color: #fff; background: var(--accent); border: 0; border-radius: 99px; padding: 0.55em 1.6em; cursor: pointer; margin-top: calc(var(--content-gap) * 0.5); }
+.btn-show:hover { filter: brightness(0.92); }
+.btn-show:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.result { display: none; grid-template-columns: 1fr 1fr; gap: var(--content-gap); width: 100%; }
+.demo-wrap.shown { gap: calc(var(--content-gap) * 0.55); }
+.demo-wrap.shown .result { display: grid; }
+.demo-wrap.shown .sites { display: none; }
+.demo-wrap.shown .prompt { font-size: clamp(0.9rem, 1.3vw, 1.35rem); padding: 0.6em 1em; }
+.demo-wrap.shown .btn-show { font-size: var(--small-size); padding: 0.4em 1.2em; background: var(--card); color: var(--muted); border: 1px solid var(--line); margin-top: 0; }
+.demo-wrap.shown .btn-show:hover { filter: none; color: var(--ink); }
+.pane { display: flex; flex-direction: column; gap: 0.5em; min-width: 0; }
+.pane-head { display: flex; align-items: center; gap: 0.8em; }
+.pane-head .who { font-family: var(--mono); font-size: var(--small-size); color: var(--muted); }
+.pane .answer { flex: 1; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: clamp(0.7rem, 1.3vw, 1.2rem); font-size: clamp(0.85rem, 1.15vw, 1.25rem); line-height: 1.4; color: var(--ink); }
+.pane .answer p { margin: 0 0 0.55em; }
+.pane .answer p:last-child { margin-bottom: 0; }
+.pane .answer ol { margin: 0.2em 0 0 1.3em; }
+.pane .answer li { margin-bottom: 0.25em; }
+.pane .dim { color: var(--muted); }
+.pane table.mini { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 0.76em; margin: 0.3em 0 0.8em; }
+.pane table.mini th, .pane table.mini td { text-align: left; padding: 0.3em 0.45em; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.pane table.mini th { color: var(--muted); font-weight: 500; }
+.pane table.mini tr.dim td { color: var(--muted); border-bottom-style: dashed; }
+.pane .link { display: block; font-family: var(--mono); font-size: 0.78em; line-height: 1.35; word-break: break-all; color: var(--accent); text-decoration: none; margin: 0 0 0.7em; }
+.pane .link:hover { text-decoration: underline; }
+@media (max-height: 600px) { .pane .answer { font-size: 0.72rem; padding: 0.5rem 0.7rem; } .demo-wrap.shown .prompt { font-size: 0.75rem; } }
+
+/* Data table with one picked row. ≤ 5 rows, ≤ 4 columns. */
+table.data { width: 100%; max-width: 1200px; margin: 0 auto; border-collapse: collapse; font-size: var(--body-size); }
+table.data th { text-align: left; font-weight: 500; color: var(--muted); padding: 0.45em 0.7em; border-bottom: 1.5px solid var(--ink); }
+table.data td { padding: 0.5em 0.7em; border-bottom: 1px solid var(--line); font-family: var(--mono); color: var(--ink-2); }
+table.data td:first-child { font-family: var(--font); color: var(--ink); font-weight: 500; }
+table.data tr.pick td { background: var(--accent-soft); color: var(--ink); font-weight: 600; }
+table.data td.no { color: var(--bad); }
+table.data td.yes { color: var(--ok); }
+
+/* Appendix divider: statement + the numbered sources */
+.divider { display: flex; flex-direction: column; gap: calc(var(--content-gap) * 2); align-items: center; }
+.sources { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: clamp(0.4rem, 1.4vh, 1rem) calc(var(--content-gap) * 1.5); font-size: clamp(0.85rem, 1.25vw, 1.35rem); max-width: 1150px; width: 100%; }
+.sources li { display: grid; grid-template-columns: 2.2em 1fr; align-items: baseline; }
+.sources .n { font-family: var(--mono); font-size: 0.8em; color: var(--muted); }
+.sources a { color: var(--ink); font-weight: 500; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 0.2em; }
+.sources .meta { display: block; font-size: 0.78em; color: var(--muted); }
+.sources.many { font-size: clamp(0.74rem, 0.95vw, 1.05rem); max-width: 1500px; margin: 0 auto; gap: clamp(0.3rem, 1vh, 0.7rem) calc(var(--content-gap) * 1.5); }
+.sources.many .meta { font-size: 0.8em; line-height: 1.3; }
+
+/* Citation marker + source line */
+.ref { font-family: var(--mono); font-size: var(--small-size); color: var(--muted); text-decoration: none; position: relative; z-index: 2; }
+.ref:hover { color: var(--accent); text-decoration: underline; }
+.source-line { font-size: var(--small-size); color: var(--muted); text-align: center; margin-top: calc(var(--content-gap) * 0.8); }
+
+/* Recordings: 2 × 2 videos, click to play */
+figure { display: flex; flex-direction: column; gap: 0.4rem; min-width: 0; min-height: 0; align-items: center; }
+figcaption { font-size: var(--small-size); color: var(--muted); text-align: center; }
+.media { display: block; max-width: 100%; max-height: 60vh; width: auto; height: auto; border-radius: calc(var(--radius) * 0.7); object-fit: contain; }
+.media.frame { background: var(--card); border: 1px solid var(--line); }
+img, video { max-width: 100%; }
+.vids { display: grid; grid-template-columns: 1fr 1fr; gap: var(--element-gap) var(--content-gap); max-width: 1150px; width: 100%; margin: 0 auto; }
+.vids video { width: 100%; max-height: 31vh; aspect-ratio: 16 / 10; object-fit: contain; background: #000; border-radius: calc(var(--radius) * 0.7); border: 1px solid var(--line); display: block; }
+
+/* ===========================================
+   RESPONSIVE: narrow screens stack or drop the secondary element
+   =========================================== */
+@media (max-width: 900px) {
+  .stats { grid-template-columns: 1fr 1fr; row-gap: var(--content-gap); }
+  .stat .v { font-size: clamp(1.8rem, 8vw, 4rem); }
+  .hide-sm { display: none !important; }
+}
+@media (max-width: 700px) {
+  .title-main { grid-template-columns: 1fr; }
+  .readers { grid-template-columns: 1fr; }
+  .readers > div:first-child { display: none; }
+  .vids, .sources, .answer-row, .answer-follow { grid-template-columns: 1fr; }
+  .answer-follow .down, .answer-follow p { grid-column: 1; }
+  .agents { grid-template-columns: 1fr; gap: var(--content-gap); }
+  .agent-group.four { grid-template-columns: repeat(2, 1fr); }
+  .agent-rule { width: 60%; height: 1px; justify-self: center; }
+  .news-row, .frames.two, .cards, .tiles { grid-template-columns: 1fr; }
+  .news figure.wide .media { width: 100%; }
+  .news .media { width: 100%; }
+  .sources .meta { display: none; }
+  .vids figure:nth-child(n+3) { display: none; }
+  table.data { font-size: 0.8rem; }
+  .hide-xs { display: none !important; }
+}
+@media (max-height: 600px) {
+  .hide-short { display: none !important; }
+  .sources.many { grid-template-columns: repeat(3, 1fr); font-size: 0.68rem; gap: 0.15rem 1rem; }
+  .sources.many .meta { display: none; }
+}
+@media (max-height: 500px) { .frames.two { grid-template-columns: 1fr 1fr; max-width: 120vh; } .frames.one { max-width: 90vh; } .tiles { grid-template-columns: repeat(3, 1fr); } .tile { padding: 0.5rem; } .own .apple { display: none; } }
+@media (max-height: 500px) { .news .media, .news figure.wide .media { width: auto; max-height: 18vh; } .news { gap: 0.3rem; } .news-row { grid-template-columns: auto auto; justify-content: center; } }
+
+</style>
+</head>
+<body>
+
+<main id="deck">
+
+<!-- 1 · Cover -->
+<section class="slide title-slide" data-section="Hook" aria-label="Title">
+  <div class="slide-content">
+    <div class="title-top reveal">
+      <span></span>
+      <span class="byline"><b>Moritz Rosenthal</b><span>9 November 2026</span></span>
+    </div>
+    <div class="title-main solo reveal">
+      <h1>Agent<br>Experience</h1>
+      <p class="ask">Why is it relevant?<br>How does it look like in practice?<br>How can we apply it to our productivity?</p>
+    </div>
+    <div></div>
+  </div>
+</section>
+
+<!-- 2 · Definition -->
+<section class="slide def-slide" data-section="Hook" aria-label="Agent experience">
+  <div class="slide-content">
+    <div class="head"><h2 class="reveal">Agent experience</h2></div>
+    <p class="definition reveal">The quality with which agents <span class="l-find">find</span> a digital environment and can <span class="l-read">read</span> and <span class="l-act">act</span> within it.</p>
+  </div>
+</section>
+
+<!-- 3 · Agents: two coding agents | two personal agents (Moritz speaks the framing) -->
+<section class="slide" data-section="Hook" aria-label="Your assistants">
+  <div class="slide-content">
+    <div class="head"><h2 class="reveal">Your assistants</h2></div>
+    <p class="agents-note reveal">agents per person are increasing</p>
+    <div class="agents reveal">
+      <div class="agent-group">
+        <figure class="logo"><span class="mark"><img src="{{logo-codex.png}}" alt="Codex logo"></span><figcaption>Codex</figcaption></figure>
+        <figure class="logo"><span class="mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z"/></svg></span><figcaption>Claude Code</figcaption></figure>
+      </div>
+      <div class="agent-rule" aria-hidden="true"></div>
+      <div class="agent-group four">
+        <figure class="logo"><span class="mark"><img src="{{instinct-mark.png}}" alt="Instinct logo"></span><figcaption>Instinct <a class="ref" href="https://techcrunch.com/2026/09/28/viral-ai-agent-instinct-raises-1b-series-c-at-a-10b-valuation/" target="_blank" rel="noopener" title="TechCrunch, 28 Sep 2026: Viral AI agent Instinct raises $1B Series C at a $10B valuation">[14]</a></figcaption></figure>
+        <figure class="logo"><span class="mark"><img src="{{logo-muse.png}}" alt="Muse logo"></span><figcaption>Muse <a class="ref" href="https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/" target="_blank" rel="noopener" title="Meta newsroom, 8 Sep 2026: Introducing Muse">[15]</a></figcaption></figure>
+        <figure class="logo"><span class="mark"><img src="{{logo-grok.png}}" alt="Grok logo"></span><figcaption>Grok</figcaption></figure>
+        <figure class="logo"><span class="mark"><svg viewBox="12 12 156 156" aria-hidden="true"><path d="M101.228 164.247C96.2776 164.247 91.5751 163.307 87.1201 161.426C82.6651 159.545 78.7051 156.921 75.2401 153.555C71.4781 154.842 67.5676 155.486 63.5086 155.486C56.8756 155.486 50.7376 153.852 45.0946 150.585C39.4516 147.318 34.8976 142.863 31.4326 137.22C28.0666 131.577 26.3836 125.291 26.3836 118.361C26.3836 115.49 26.7796 112.371 27.5716 109.005C23.6116 105.342 20.5426 101.135 18.3646 96.3828C16.1866 91.5318 15.0976 86.4828 15.0976 81.2358C15.0976 75.8898 16.2361 70.7418 18.5131 65.7918C20.7901 60.8418 23.9581 56.5848 28.0171 53.0208C32.1751 49.3578 36.9766 46.8333 42.4216 45.4473C43.5106 39.8043 45.7876 34.7553 49.2526 30.3003C52.8166 25.7463 57.1726 22.1823 62.3206 19.6083C67.4686 17.0343 72.9631 15.7473 78.8041 15.7473C83.7541 15.7473 88.4566 16.6878 92.9116 18.5688C97.3666 20.4498 101.327 23.0733 104.792 26.4393C108.554 25.1523 112.464 24.5088 116.523 24.5088C123.156 24.5088 129.294 26.1423 134.937 29.4093C140.58 32.6763 145.085 37.1313 148.451 42.7743C151.916 48.4173 153.648 54.7038 153.648 61.6338C153.648 64.5048 153.252 67.6233 152.46 70.9893C156.42 74.6523 159.489 78.9093 161.667 83.7603C163.845 88.5123 164.934 93.5118 164.934 98.7588C164.934 104.105 163.796 109.253 161.519 114.203C159.242 119.153 156.024 123.459 151.866 127.122C147.807 130.686 143.055 133.161 137.61 134.547C136.521 140.19 134.195 145.239 130.631 149.694C127.166 154.248 122.859 157.812 117.711 160.386C112.563 162.96 107.069 164.247 101.228 164.247ZM64.5481 145.685C69.4981 145.685 73.8046 144.645 77.4676 142.566L105.386 126.528C106.376 125.835 106.871 124.895 106.871 123.707V110.936L70.9336 131.577C68.7556 132.864 66.5776 132.864 64.3996 131.577L36.3331 115.391C36.3331 115.688 36.2836 116.034 36.1846 116.43C36.1846 116.826 36.1846 117.42 36.1846 118.212C36.1846 123.261 37.3726 127.914 39.7486 132.171C42.2236 136.329 45.6391 139.596 49.9951 141.972C54.3511 144.447 59.2021 145.685 64.5481 145.685ZM66.0331 121.479C66.6271 121.776 67.1716 121.925 67.6666 121.925C68.1616 121.925 68.6566 121.776 69.1516 121.479L80.2891 115.094L44.5006 94.3038C42.3226 93.0168 41.2336 91.0863 41.2336 88.5123V56.2878C36.2836 58.4658 32.3236 61.8318 29.3536 66.3858C26.3836 70.8408 24.8986 75.7908 24.8986 81.2358C24.8986 86.0868 26.1361 90.7398 28.6111 95.1948C31.0861 99.6498 34.3036 103.016 38.2636 105.293L66.0331 121.479ZM101.228 154.446C106.475 154.446 111.227 153.258 115.484 150.882C119.741 148.506 123.107 145.239 125.582 141.081C128.057 136.923 129.294 132.27 129.294 127.122V95.0463C129.294 93.8583 128.799 92.9673 127.809 92.3733L116.523 85.8393V127.271C116.523 129.845 115.434 131.775 113.256 133.062L85.1896 149.249C90.0406 152.714 95.3866 154.446 101.228 154.446ZM106.871 100.095V79.8993L90.09 70.3953L73.1611 79.8993V100.095L90.09 109.599L106.871 100.095ZM63.5086 52.7238C63.5086 50.1498 64.5976 48.2193 66.7756 46.9323L94.8421 30.7458C89.9911 27.2808 84.6451 25.5483 78.8041 25.5483C73.5571 25.5483 68.8051 26.7363 64.5481 29.1123C60.2911 31.4883 56.9251 34.7553 54.4501 38.9133C52.0741 43.0713 50.8861 47.7243 50.8861 52.8723V84.7998C50.8861 85.9878 51.3811 86.9283 52.3711 87.6213L63.5086 94.1553V52.7238ZM138.947 123.707C143.897 121.529 147.807 118.163 150.678 113.609C153.648 109.055 155.133 104.105 155.133 98.7588C155.133 93.9078 153.896 89.2548 151.421 84.7998C148.946 80.3448 145.728 76.9788 141.768 74.7018L113.999 58.6638C113.405 58.2678 112.86 58.1193 112.365 58.2183C111.87 58.2183 111.375 58.3668 110.88 58.6638L99.7426 64.9008L135.68 85.8393C136.769 86.4333 137.561 87.2253 138.056 88.2153C138.65 89.1063 138.947 90.1953 138.947 91.4823V123.707ZM109.098 48.2688C111.276 46.8828 113.454 46.8828 115.632 48.2688L143.847 64.7523C143.847 64.0593 143.847 63.1683 143.847 62.0793C143.847 57.3273 142.659 52.8228 140.283 48.5658C138.006 44.2098 134.69 40.7448 130.334 38.1708C126.077 35.5968 121.127 34.3098 115.484 34.3098C110.534 34.3098 106.227 35.3493 102.564 37.4283L74.6461 53.4663C73.6561 54.1593 73.1611 55.0998 73.1611 56.2878V69.0588L109.098 48.2688Z"/></svg></span><figcaption>Dots</figcaption></figure>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 · What the research says (Moritz's wording, verbatim) -->
+<section class="slide" data-section="Why" aria-label="Agents answer">
+  <div class="slide-content">
+    <div class="head"><h2 class="reveal">Agents answer…</h2></div>
+    <div class="answer reveal">
+      <div class="answer-row">
+        <div class="ans"><span class="big">7–10%</span> <span class="rest">from training memory</span></div>
+        <div class="ans hi"><span class="big">most of the time</span> <span class="rest">… from real-time web search</span></div>
+      </div>
+      <div class="answer-follow">
+        <span class="down" aria-hidden="true">↓</span>
+        <p>finds the information if it is accessible for agents</p>
+      </div>
+    </div>
+    <p class="source-line reveal">own pages 78% vs 58% · recommended 1.9× more often, 20% vs 11% · ora research, arXiv 2609.34951v3 <a class="ref" href="https://arxiv.org/abs/2609.34951" target="_blank" rel="noopener" title="ora research (2026), AX is the New AEO">[1]</a></p>
+  </div>
+</section>
+
+<!-- 5 · Relevance: companies are betting on agents -->
+<section class="slide" data-section="Why" aria-label="Everyone is betting">
+  <div class="slide-content">
+    <div class="head"><h2 class="reveal">Everyone is betting</h2></div>
+    <div class="news reveal">
+      <div class="news-row">
+        <figure><img class="media frame" src="{{news-cloudflare.png}}" alt="Cloudflare blog, 17 April 2026: Introducing the Agent Readiness score. Is your site agent-ready?"><figcaption><a href="https://blog.cloudflare.com/agent-readiness/" target="_blank" rel="noopener">blog.cloudflare.com/agent-readiness</a> <a class="ref" href="https://blog.cloudflare.com/agent-readiness/" target="_blank" rel="noopener" title="Cloudflare blog, 17 Apr 2026: Introducing the Agent Readiness score">[5]</a></figcaption></figure>
+        <figure><img class="media frame" src="{{news-vercel.png}}" alt="Vercel's Is Agentic: Score how agentic your site is. Every scan is run by Ora."><figcaption><a href="https://is-agentic.com/" target="_blank" rel="noopener">is-agentic.com</a> <a class="ref" href="https://is-agentic.com/" target="_blank" rel="noopener" title="Vercel, Is Agentic (launched Aug 2026 with Ora)">[16]</a></figcaption></figure>
+      </div>
+      <figure class="wide"><img class="media frame" src="{{news-shopify.png}}" alt="Shopify news, 24 March 2026: Millions of merchants can sell in AI chats"><figcaption><a href="https://www.shopify.com/news/agentic-commerce-momentum" target="_blank" rel="noopener">shopify.com/news/agentic-commerce-momentum</a> <a class="ref" href="https://www.shopify.com/news/agentic-commerce-momentum" target="_blank" rel="noopener" title="Shopify news, 24 Mar 2026: Millions of merchants can sell in AI chats">[10]</a></figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · Question -->
+<section class="slide q-slide" data-section="Why" aria-label="Question: different from UX">
+  <div class="slide-content">
+    <h2 class="question-big reveal">Why is it any different from user experience?</h2>
+  </div>
+</section>
+
+<!-- 7 · Same page, two readers -->
+<section class="slide" data-section="Why" aria-label="Two readers">
+  <div class="slide-content">
+    <div class="head"><h2 class="reveal">Two readers</h2></div>
+    <div class="readers reveal">
+      <div>
+        <h3>Humans</h3>
+        <img class="media frame" src="{{configurator-human-view.png}}" alt="The Santa configurator as a human sees it: a live-drawn Santa, nine steps, prices">
+      </div>
+      <div>
+        <h3>The agent</h3>
+        <div class="agent-view">
+          <div class="got">Design your own Santa | Moritz Rosenthal</div>
+          <div class="root">&lt;div id="root"&gt;&lt;/div&gt;</div>
+          <div class="says">“The configurator only works in a browser that runs JavaScript.”</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 · Question -->
+<section class="slide q-slide" data-section="Why" aria-label="Question: how to improve">
+  <div class="slide-content">
+    <h2 class="question-big reveal">How do you make an agent’s experience better?</h2>
+  </div>
+</section>
+
+<!-- 9 · A test shop: the real configurator, live (poster when offline) -->
+<section class="slide" data-section="Demo" aria-label="A test shop">
+  <div class="slide-content">
+    <div class="head"><h2 class="reveal">A test shop</h2></div>
+    <div class="frames one reveal"><div class="live-frame" data-src="https://a.moritzrosenthal.com/shop/configure/"><img src="{{shop-a-poster.jpg}}" alt="The configurator on a.moritzrosenthal.com (offline poster)"><iframe title="Configurator on a.moritzrosenthal.com" loading="lazy" tabindex="-1"></iframe></div></div>
+  </div>
+</section>
+
+<!-- 10 · A and B: identical for humans -->
+<section class="slide" data-section="Demo" aria-label="A and B">
+  <div class="slide-content">
+    <div class="head"><h2 class="reveal">A and B</h2></div>
+    <div class="frames two reveal"><div class="live-frame" data-src="https://a.moritzrosenthal.com/shop/configure/"><span class="frame-label mono">a.</span><img src="{{shop-a-poster.jpg}}" alt="The configurator on a.moritzrosenthal.com (offline poster)"><iframe title="Configurator on a.moritzrosenthal.com" loading="lazy" tabindex="-1"></iframe></div><div class="live-frame" data-src="https://b.moritzrosenthal.com/shop/configure/"><span class="frame-label mono">b.</span><img src="{{shop-b-poster.jpg}}" alt="The configurator on b.moritzrosenthal.com (offline poster)"><iframe title="Configurator on b.moritzrosenthal.com" loading="lazy" tabindex="-1"></iframe></div></div>
+  </div>
+</section>
+
+<!-- 11 · Demo task: the prompt; a button reveals the two agents' answers (recorded 2026-11-09, harness/live.sh A and B) -->
+<section class="slide" data-section="Demo" aria-label="Demo task">
+  <div class="slide-content">
+    <div class="head"><h2 class="reveal">Demo task</h2></div>
+    <div class="demo-wrap reveal">
+      <div class="prompt">Can you order 10 customized chocolate Santas from <span class="url">https://www.moritzrosenthal.com/shop/configure/</span> , each with a different design? I want a ready-to-click checkout link at the end.</div>
+      <div class="sites"><span class="tag">a.moritzrosenthal.com</span><span class="vs">vs.</span><span class="tag">b.moritzrosenthal.com</span></div>
+      <button class="btn-show" type="button" data-show="Show the result" data-hide="Hide the result">Show the result</button>
+      <div class="result">
+        <div class="pane">
+          <div class="pane-head"><span class="tag bad">a.moritzrosenthal.com</span><span class="who">agent 1 · verbatim</span></div>
+          <div class="answer">
+            <p>I can't place this order, and I don't have a checkout link to give you.</p>
+            <p>Here are some ways forward:</p>
+            <ol>
+              <li>Do it yourself in about 5 minutes.</li>
+              <li>Paste the page source.</li>
+              <li>Check for an API.</li>
+            </ol>
+          </div>
+        </div>
+        <div class="pane">
+          <div class="pane-head"><span class="tag ok">b.moritzrosenthal.com</span><span class="who">agent 2 · trimmed</span></div>
+          <div class="answer">
+            <p>“I picked 10 different designs, one of each, and set the quantity to 1 for each.”</p>
+            <table class="mini">
+              <thead><tr><th>#</th><th>Chocolate</th><th>Size</th><th>Foil</th><th>Accessory</th><th>Engraving</th></tr></thead>
+              <tbody>
+                <tr><td>1</td><td>dark</td><td>M</td><td>red</td><td>bell</td><td>Frohe Weihnachten</td></tr>
+                <tr><td>2</td><td>milk</td><td>L</td><td>gold</td><td>sack</td><td>Ho Ho Ho</td></tr>
+                <tr><td>3</td><td>white</td><td>S</td><td>silver</td><td>reindeer</td><td>Nikolaus</td></tr>
+                <tr class="dim"><td>⋮</td><td>⋮</td><td>⋮</td><td>⋮</td><td>⋮</td><td>⋮</td></tr>
+                <tr><td>10</td><td>milk</td><td>S</td><td>blue</td><td>bell</td><td>(none)</td></tr>
+              </tbody>
+            </table>
+            <p>“Checkout link:”</p>
+            <a class="link" href="https://b.moritzrosenthal.com/shop/configure/order/?d=dark.m.red.red.bell.classic.giftbox.1.Frohe%20Weihnachten&d=milk.l.gold.gold.sack.script.crate.1.Ho%20Ho%20Ho&d=white.s.silver.tartan.reindeer.block.none.1.Nikolaus&d=ruby.xl.green.none.none.classic.giftbox.1.F%C3%BCr%20Dich&d=dark.l.blue.tartan.bell.script.none.1.Merry%20Christmas&d=milk.m.green.red.reindeer.block.giftbox.1.Familie%20Rosenthal&d=white.l.gold.gold.none.script.crate.1.Zum%20Fest%202026&d=ruby.s.silver.red.sack.classic.none.1.S%C3%BC%C3%9Fe%20Gr%C3%BC%C3%9Fe&d=dark.xl.red.gold.reindeer.block.crate.1.Santa%202026&d=milk.s.blue.none.bell.classic.none.1." target="_blank" rel="noopener">https://b.moritzrosenthal.com/shop/configure/order/?d=dark.m.red.red.bell.classic.giftbox.1.Frohe%20Weihnachten&amp;d=milk.l.gold.gold.sack.script.crate.1.Ho%20Ho%20Ho&amp;d=… <span class="dim">(10 designs)</span></a>
+            <p>“Check the total: the checkout page shows each design with its price and the total, so look at it before you pay.”</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 12 · Question -->
+<section class="slide q-slide" data-section="Demo" aria-label="Question: what makes the difference">
+  <div class="slide-content">
+    <h2 class="question-big reveal">So what makes the difference?</h2>
+  </div>
+</section>
+
+<!-- 13 · Find, read, act -->
+<section class="slide" data-section="How" aria-label="Find, read, act">
+  <div class="slide-content">
+    <div class="cards layer-cards reveal">
+      <div class="card lc-find"><h3><span class="num">1</span> Find</h3></div>
+      <div class="card lc-read"><h3><span class="num">2</span> Read</h3></div>
+      <div class="card lc-act"><h3><span class="num">3</span> Act</h3></div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 · Find: generated discovery files -->
+<section class="slide" data-section="How" aria-label="Find: generated discovery files">
+  <div class="slide-content">
+    <div class="head"><h2 class="reveal l-find">1 Find</h2></div>
+    <figure class="diagram-wrap reveal"><!--svg:layer-find.svg--></figure>
+  </div>
+</section>
+
+<!-- 15 · Read: one source, two renderings -->
+<section class="slide" data-section="How" aria-label="Read: one source, two renderings">
+  <div class="slide-content">
+    <div class="head"><h2 class="reveal l-read" data-layer="2 Read">Text twins</h2></div>
+    <figure class="diagram-wrap reveal"><!--svg:layer-read.svg--></figure>
+  </div>
+</section>
+
+<!-- 16 · Act: links to follow -->
+<section class="slide" data-section="How" aria-label="Act: links to follow">
+  <div class="slide-content">
+    <div class="head"><h2 class="reveal l-act" data-layer="3 Act">Links to follow</h2></div>
+    <figure class="diagram-wrap reveal"><!--svg:layer-act.svg--></figure>
+  </div>
+</section>
+
+<!-- 17 · Question -->
+<section class="slide q-slide" data-section="Close" aria-label="Question: personal agents">
+  <div class="slide-content">
+    <h2 class="question-big reveal">How can we use that to improve our personal agents’ productivity?</h2>
+  </div>
+</section>
+
+<!-- 18 · The adapter: agent → improve agent experience → tool -->
+<section class="slide" data-section="Close" aria-label="The adapter">
+  <div class="slide-content">
+    <div class="head"><h2 class="reveal">The adapter</h2></div>
+    <figure class="diagram-wrap reveal"><!--svg:adapter.svg--></figure>
+  </div>
+</section>
+
+<!-- 19 · Your own tools (close) -->
+<section class="slide" data-section="Close" aria-label="Your own tools">
+  <div class="slide-content">
+    <div class="head"><h2 class="reveal">Your own tools</h2></div>
+    <div class="own reveal">
+      <span class="apple" aria-label="Apple iCloud"><svg viewBox="0 0 24 24"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg></span>
+      <div class="tiles">
+        <div class="tile"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="17" r="8"/><path d="M8 42c1.5-9 8-14 16-14s14.5 5 16 14"/></svg><span>Contacts</span></div>
+        <div class="tile"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="7" y="10" width="34" height="31" rx="5"/><path d="M7 19h34M16 6v8M32 6v8"/><path d="M15 27h4M22 27h4M29 27h4M15 34h4M22 34h4"/></svg><span>Calendar</span></div>
+        <div class="tile"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="11" width="36" height="27" rx="5"/><path d="M7 14l17 13 17-13"/></svg><span>Mail</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== APPENDIX ===================== -->
+
+<!-- 20 · Sources (first appendix slide) -->
+<section class="slide" data-section="Appendix" aria-label="Sources">
+  <div class="slide-content">
+    <div class="head"><h2 class="reveal">Sources</h2></div>
+    <ol class="sources many reveal">
+        <li><span class="n">1</span><div><a href="https://arxiv.org/abs/2609.34951" target="_blank" rel="noopener">AX is the New AEO</a><span class="meta">ora research · arXiv 2609.34951v3 · Oct 2026 · unreviewed, authors sell readiness tooling</span></div></li>
+        <li><span class="n">2</span><div><a href="https://ora.ai/methodology" target="_blank" rel="noopener">Agent-readiness ranker and is-agentic</a><span class="meta">ora · scans and leaderboard of 8 Nov 2026</span></div></li>
+        <li><span class="n">3</span><div><a href="https://webmachinelearning.github.io/webmcp/" target="_blank" rel="noopener">WebMCP</a><span class="meta">W3C Web Machine Learning Community Group · Draft CG Report, 2 Nov 2026 · editors from Microsoft and Google · “not a W3C Standard”</span></div></li>
+        <li><span class="n">4</span><div><a href="https://developer.chrome.com/blog/webmcp-epp" target="_blank" rel="noopener">WebMCP in Chrome</a><span class="meta">Chrome for Developers · early preview 10 Feb 2026, origin trial 9 Jun 2026 · Firefox and Safari: nothing</span></div></li>
+        <li><span class="n">5</span><div><a href="https://blog.cloudflare.com/agent-readiness/" target="_blank" rel="noopener">Introducing the Agent Readiness score</a><span class="meta">Cloudflare blog · 17 Apr 2026 · isitagentready.com · checks Markdown, Web Bot Auth, Agent Skills, WebMCP · llms.txt off by default</span></div></li>
+        <li><span class="n">6</span><div><a href="https://blog.cloudflare.com/markdown-for-agents/" target="_blank" rel="noopener">Introducing Markdown for Agents</a><span class="meta">Cloudflare blog · 12 Feb 2026 · Accept: text/markdown at the edge · 16,180 → 3,150 tokens for one post</span></div></li>
+        <li><span class="n">7</span><div><a href="https://github.com/cloudflare/agent-skills-discovery-rfc" target="_blank" rel="noopener">Agent Skills Discovery via Well-Known URIs</a><span class="meta">Cloudflare RFC draft v0.2.0 · Jan–Mar 2026 · /.well-known/agent-skills/index.json, the file state B serves</span></div></li>
+        <li><span class="n">8</span><div><a href="https://blog.cloudflare.com/web-bot-auth/" target="_blank" rel="noopener">Forget IPs: cryptography to verify bot and agent traffic</a><span class="meta">Cloudflare blog · 15 May 2025 · Web Bot Auth: signed requests instead of user agents and IP lists</span></div></li>
+        <li><span class="n">9</span><div><a href="https://www.shopify.com/news/ai-commerce-at-scale" target="_blank" rel="noopener">The agentic commerce platform</a><span class="meta">Shopify news · 11 Jan 2026 · Universal Commerce Protocol with Google, 20+ endorsers · Agentic Storefronts, Agentic plan</span></div></li>
+        <li><span class="n">10</span><div><a href="https://www.shopify.com/news/agentic-commerce-momentum" target="_blank" rel="noopener">Millions of merchants can sell in AI chats</a><span class="meta">Shopify news · 24 Mar 2026 · Agentic Storefronts in ChatGPT, Copilot, Google AI Mode and Gemini · merchant stays merchant of record</span></div></li>
+        <li><span class="n">11</span><div><a href="https://www.shopify.com/news/spring-26-edition-dev" target="_blank" rel="noopener">Agentic commerce for every developer</a><span class="meta">Shopify Spring ’26 Edition · 17 Jun 2026 · Catalog and UCP self-serve for any developer</span></div></li>
+        <li><span class="n">12</span><div><a href="https://shopify.dev/changelog/posts/customize-llmstxt-llms-fulltxt-and-agentsmd" target="_blank" rel="noopener">Customize /llms.txt, /llms-full.txt and /agents.md</a><span class="meta">Shopify developer changelog · 28 May 2026 · every store gets a generated agents.md; llms.txt mirrors it</span></div></li>
+        <li><span class="n">13</span><div><a href="https://shopify.dev/docs/agents/carts-and-checkout/permalinks" target="_blank" rel="noopener">Cart and checkout permalinks for agents</a><span class="meta">Shopify developer docs · “Opening the link never places an order or charges the buyer” · the rule the demo copies</span></div></li>
+        <li><span class="n">14</span><div><a href="https://techcrunch.com/2026/09/28/viral-ai-agent-instinct-raises-1b-series-c-at-a-10b-valuation/" target="_blank" rel="noopener">Viral AI agent Instinct raises $1B Series C at a $10B valuation</a><span class="meta">TechCrunch · 28 Sep 2026 · Instinct by Spear Street Technology (not Meta), invite-only since Aug 2026</span></div></li>
+        <li><span class="n">15</span><div><a href="https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/" target="_blank" rel="noopener">Introducing Muse: the world’s first personal AI agent built for everyone</a><span class="meta">Meta newsroom · 8 Sep 2026 · opens a browser, fills out forms, negotiates; a separate Sentinel agent approves internet actions</span></div></li>
+        <li><span class="n">16</span><div><a href="https://is-agentic.com/" target="_blank" rel="noopener">Is Agentic: AI agent readiness score for your site</a><span class="meta">Vercel · launched 20 Aug 2026 with Ora (“every scan is run by Ora”) · see also Vercel blog, “How Ora benchmarks every major AI agent on Vercel”, 21 Aug 2026</span></div></li>
+      </ol>
+  </div>
+</section>
+
+</main>
+
+
+<nav class="bar" aria-label="Presentation progress">
+  <div class="bar-progress" id="barProgress"></div>
+  <ul class="sections" id="sections"></ul>
+  <div class="pageno" aria-live="polite"><b id="pageCur">01</b> / <span id="pageTot">00</span></div>
+</nav>
+
+<script>
+/* ===========================================
+   PRESENTATION CONTROLLER
+   Vertical scroll-snap deck: keyboard, wheel (native), touch (native),
+   section pills + page number + progress line, reveal-on-enter, lazy video.
+   No changes needed per deck: everything is read from the DOM.
+   =========================================== */
+class Presentation {
+  constructor() {
+    this.slides = [...document.querySelectorAll('.slide')];
+    this.current = 0;
+    this.pad = n => String(n).padStart(2, '0');
+    this.buildSections();
+    this.observe();
+    this.bindKeys();
+    document.getElementById('pageTot').textContent = this.pad(this.slides.length);
+    this.update(0);
+  }
+
+  // One pill per distinct data-section, in order of first appearance.
+  buildSections() {
+    this.sections = [];
+    this.slides.forEach((s, i) => {
+      const name = s.dataset.section;
+      let sec = this.sections.find(x => x.name === name);
+      if (!sec) { sec = { name, first: i, last: i }; this.sections.push(sec); }
+      sec.last = i;
+    });
+    const ul = document.getElementById('sections');
+    this.sections.forEach((sec, i) => {
+      const li = document.createElement('li');
+      const b = document.createElement('button');
+      b.innerHTML = `<span class="n">${this.pad(i + 1)}</span><span class="label">${sec.name}</span>`;
+      b.setAttribute('aria-label', `Go to section ${i + 1}: ${sec.name}`);
+      b.addEventListener('click', () => this.go(sec.first));
+      li.appendChild(b);
+      ul.appendChild(li);
+      sec.el = b;
+    });
+  }
+
+  observe() {
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting && e.intersectionRatio >= 0.55) {
+          e.target.classList.add('visible');
+          this.update(this.slides.indexOf(e.target));
+        }
+      });
+    }, { threshold: [0.55] });
+    this.slides.forEach(s => io.observe(s));
+  }
+
+  update(i) {
+    if (i < 0) return;
+    this.current = i;
+    document.getElementById('pageCur').textContent = this.pad(i + 1);
+    document.getElementById('barProgress').style.width = `${((i + 1) / this.slides.length) * 100}%`;
+    this.sections.forEach(sec => {
+      const active = i >= sec.first && i <= sec.last;
+      sec.el.classList.toggle('active', active);
+      sec.el.classList.toggle('done', i > sec.last);
+      if (active) sec.el.setAttribute('aria-current', 'step'); else sec.el.removeAttribute('aria-current');
+    });
+    this.syncVideos(i);
+  }
+
+  // Videos only load and play on the slide in view.
+  syncVideos(i) {
+    this.slides.forEach((s, j) => {
+      s.querySelectorAll('video.lazy-video').forEach(v => {
+        if (j === i) {
+          if (!v.src && v.dataset.src) { v.src = v.dataset.src; }
+          const p = v.play(); if (p && p.catch) p.catch(() => {});
+        } else if (!v.paused) {
+          v.pause();
+        }
+      });
+    });
+  }
+
+  go(i) {
+    i = Math.max(0, Math.min(this.slides.length - 1, i));
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.slides[i].scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+  }
+
+  bindKeys() {
+    document.addEventListener('keydown', e => {
+      if (e.target.closest && e.target.closest('button') && (e.key === ' ' || e.key === 'Enter')) return;
+      const next = ['ArrowDown', 'PageDown', ' ', 'ArrowRight'];
+      const prev = ['ArrowUp', 'PageUp', 'ArrowLeft'];
+      if (next.includes(e.key)) { e.preventDefault(); this.go(this.current + 1); }
+      else if (prev.includes(e.key)) { e.preventDefault(); this.go(this.current - 1); }
+      else if (e.key === 'Home') { e.preventDefault(); this.go(0); }
+      else if (e.key === 'End') { e.preventDefault(); this.go(this.slides.length - 1); }
+    });
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => new Presentation());
+// Demo task: the button toggles the two recorded agent answers.
+document.querySelectorAll('.btn-show').forEach(b => b.addEventListener('click', () => {
+  const wrap = b.closest('.demo-wrap'); const on = wrap.classList.toggle('shown');
+  b.textContent = on ? b.dataset.hide : b.dataset.show;
+}));
+</script>
+<script>
+/* Deck extras (outside the template's Presentation class): deck.html#N jumps to slide N,
+   the hash follows the slide in view, "f" toggles fullscreen, videos pause when their slide leaves. */
+(function () {
+  const slides = [...document.querySelectorAll('.slide')];
+  const initial = location.hash;
+  let ready = false;
+  function jump(hash) {
+    const m = (hash || location.hash).match(/^#(\d+)$/);
+    if (!m) return;
+    const i = Math.max(0, Math.min(slides.length - 1, parseInt(m[1], 10) - 1));
+    const root = document.scrollingElement, body = document.body;
+    const prev = [root.style.scrollBehavior, body.style.scrollBehavior];
+    root.style.scrollBehavior = body.style.scrollBehavior = 'auto';
+    slides[i].scrollIntoView({ behavior: 'auto', block: 'start' });
+    root.style.scrollBehavior = prev[0]; body.style.scrollBehavior = prev[1];
+  }
+  window.addEventListener('load', () => { jump(initial); setTimeout(() => { ready = true; }, 300); });
+  window.addEventListener('hashchange', () => jump());
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting && e.intersectionRatio >= 0.55) {
+      if (ready) history.replaceState(null, '', '#' + (slides.indexOf(e.target) + 1));
+    } else if (!e.isIntersecting) {
+      e.target.querySelectorAll('video').forEach(v => v.pause());
+    }
+  }), { threshold: [0, 0.55] });
+  slides.forEach(s => io.observe(s));
+  document.addEventListener('keydown', e => {
+    if (e.key === 'f' && !e.metaKey && !e.ctrlKey) {
+      document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    }
+  });
+})();
+</script>
+<script>
+/* Live iframes: load the real configurator only when the site answers; otherwise the poster stays.
+   The iframe renders a 1200x800 page and is scaled to its box. */
+(function () {
+  const frames = [...document.querySelectorAll('.live-frame')];
+  function fit() { frames.forEach(f => f.style.setProperty('--s', f.clientWidth / 1200)); }
+  window.addEventListener('resize', fit); fit();
+  frames.forEach(f => {
+    const url = f.dataset.src, ifr = f.querySelector('iframe');
+    const go = () => {
+      if (ifr.src) return;
+      fetch(url, { mode: 'no-cors', cache: 'no-store' }).then(() => {
+        ifr.addEventListener('load', () => f.classList.add('on'), { once: true });
+        ifr.src = url;
+      }).catch(() => {});
+    };
+    new IntersectionObserver((es, io) => es.forEach(e => { if (e.isIntersecting) { go(); io.disconnect(); } }), { rootMargin: '100% 0px' }).observe(f);
+  });
+})();
+</script>
+</body>
+</html>
